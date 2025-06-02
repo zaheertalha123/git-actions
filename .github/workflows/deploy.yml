@@ -43,7 +43,7 @@ jobs:
             if [ -d ".git" ]; then
               git pull origin main
             else
-              git clone https://github.com/YourGitHubUsername/git-actions.git .
+              git clone https://github.com/zaheertalha123/git-actions.git .
             fi
 
             # Install dependencies and build
