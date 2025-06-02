@@ -1,0 +1,56 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build Next.js app
+        run: pnpm run build
+
+      - name: Deploy to EC2
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+        run: |
+          echo "$EC2_SSH_KEY" > ec2-key.pem
+          chmod 600 ec2-key.pem
+          ssh -o StrictHostKeyChecking=no -i ec2-key.pem $EC2_USER@$EC2_HOST << 'EOF'
+            # Navigate to deployment directory
+            cd /var/www/git-actions
+
+            # Pull the latest code
+            if [ -d ".git" ]; then
+              git pull origin main
+            else
+              git clone https://github.com/YourGitHubUsername/git-actions.git .
+            fi
+
+            # Install dependencies and build
+            pnpm install
+            pnpm run build
+
+            # Restart the app with PM2
+            pm2 restart git-actions || pm2 start "pnpm run start" --name git-actions
+          EOF
+          rm ec2-key.pem
